@@ -1,0 +1,99 @@
+很多测试都在TestFreeMarker类里面，里面有好些注释。
+----------------------
+0.暴露本项目的autoConfiguration给spring容器，以便其它项目整合能在spring容器中访问本项目。
+  META-INF/spring.factories，参考spring-boot-autoconfigure.jar/META-INF/spring.factories
+
+1.根据浏览器语言环境实现页面国际化：
+  1）新建国际化文件，另：spring.messages.basename=i18n/messages(即classpath:/i18n/messagexxx.properties)
+	 spring.freemarker.expose-spring-macro-helpers=true //涉及spring.ftl中的springMacroRequestContext
+  2）*.ftl页面引入spring-mvc包中的spring.ftl文件（先拷贝到/static文件夹下）
+
+2.手动实现国际化：
+  1）新建国际化文件 
+  2）request链接加入"?locale=xx_xx"。
+  3）实现LocaleResolver/SessionLocaleResolver，WebMvcConfigurer。
+         在com.example.demo.locale包中
+2.1 在application.properties中配置locale
+  
+
+3.GlobalExceptionHandler.java中有全局异常处理
+
+4.Springboot配置文件的选择：
+  #激活使用的配置文件(这个表示使用sit时的配置文件)
+  #spring.profiles.active=sit
+  #无条件地添加活动配置文件(以逗号分隔)，加入application-redis.properties, application-db.properties
+  #spring.profiles.include=redis,db
+
+5.Handler拦截器：
+  1) 创建拦截器implements HandlerInterceptor 
+  2) 创建WebMvcConfig implements WebMvcConfigurer:
+          public void addInterceptors(InterceptorRegistry registry)
+          
+6.如果用内置tomcat，解析jsp页面要引用tomcat-embed-jasper。
+   调试过程中要注意清楚浏览器缓存！！！
+
+7.静态资源访问
+	classpath:/static
+	classpath:/public
+	classpath:/resources
+	classpath:/META-INF/resources
+  优先级：META-INF/resources > resources > static > public	
+  
+8. 热部署插件spring-boot-devtools会导致spring boot application主线程启动2次。
+	<dependency>
+	    <groupId>org.springframework.boot</groupId>
+	    <artifactId>spring-boot-devtools</artifactId>
+	</dependency>
+	
+9. AOP与拦截器：拦截器利用AOP实现，拦截器是针对HTTP请求路径级别的拦截。
+
+10.Spring已经实现的线程池
+	1、SimpleAsyncTaskExecutor：不是真的线程池，这个类不重用线程，默认每次调用都会创建一个新的线程。
+	2、SyncTaskExecutor：这个类没有实现异步调用，只是一个同步操作。只适用于不需要多线程的地方。
+	3、ConcurrentTaskExecutor：Executor的适配类，不推荐使用。如果ThreadPoolTaskExecutor不满足要求时，才用考虑使用这个类。
+	4、SimpleThreadPoolTaskExecutor：是Quartz的SimpleThreadPool的类。线程池同时被quartz和非quartz使用，才需要使用此类。
+	5、ThreadPoolTaskExecutor ：最常使用，推荐。其实质是对java.util.concurrent.ThreadPoolExecutor的包装。
+
+10. Spring MVC
+       可在application.properties文件中配置TaskExecutor(线程池), 如：
+    spring.task.execution.pool.core-size=8 
+    -------------
+       请求异步返回:
+	   callable，WebAsyncTask线程池配置:
+	     不配置的话用默认的线程池SimpleAsyncTaskExecutor  //todo: 挨个测试，包括DeferredResult
+	   1) 编写ThreadPoolConfig.java, 里面有个@Bean TaskExecutor线程池
+	   2) 在WebMvcConfigurer接口的实现类中注入@Resource 上面1中的线程池，并实现
+	            方法public void configureAsyncSupport(...)
+   ------------------------------   
+      异步调用:
+		异步的方法有：
+			1、最简单的异步调用，返回值为void。
+			2、带参数的异步调用，异步方法可以传入参数。
+			3、存在返回值，常调用返回Future。
+      	无返回值调用：
+     		 基于@Async无返回值调用，直接在使用类，使用方法（建议在使用方法）上，加上注解。若需要抛出异常，需手动new一个异常抛出。      
+      		 对于返回值是void，异常会被AsyncUncaughtExceptionHandler处理掉。
+                返回值是Future（比如可以返回AsyncResult）：
+                         不会被AsyncUncaughtExceptionHandler处理，需要我们在方法中捕获异常并处理，
+                         或者在调用方在调用Futrue.get时捕获异常进行处理。
+   @Async线程池配置:
+      	1）实现接口AsyncConfigurer，注入@Resource 上面1中的线程池，并实现方法
+      	   public Executor getAsyncExecutor()
+      	2）@Async 其实会默认加载线程池，如果还有其它相关具体配置可用方法1）进行详细配置。 
+      	
+11.发布springboot项目使用外置Servlet容器的步骤:
+	1) 必须创建war项目,需要建好web项目的目录结构
+	2) 嵌入式Tomcat依赖scope指定provided
+	3) 编写SpringBootServletInitializer类子类,并重写configure方法
+	4) 配置：web.xml中显式定义metadata-complete="false"
+	5) 启动服务器 
+	
+12.在WAS ElasticBeanstalk中发布springboot应用程序时，一定要选择合适的
+   JDK以及其对应的tomcat，否则无法正常请求controller。
+	
+      	
+   
+   
+   
+  
+  
